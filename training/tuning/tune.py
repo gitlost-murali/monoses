@@ -144,6 +144,7 @@ def main():
     parser.add_argument('--word-penalty-feature', default='WordPenalty0', help='the word penalty feature name')
     parser.add_argument('--lm-feature', default='LM0', help='the language model feature name')
     parser.add_argument('--length-init', action='store_true', help='use length-based initialization')
+    parser.add_argument('--tmp-basedir', type=str, default="temporary_file/", help='Instead of creating temp file in /tmp/. Use this option for non-sudo situation')
     # TODO Add option to specify tmp dir
     args = parser.parse_args()
 
