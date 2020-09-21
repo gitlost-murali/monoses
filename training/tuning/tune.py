@@ -144,7 +144,7 @@ def main():
     parser.add_argument('--word-penalty-feature', default='WordPenalty0', help='the word penalty feature name')
     parser.add_argument('--lm-feature', default='LM0', help='the language model feature name')
     parser.add_argument('--length-init', action='store_true', help='use length-based initialization')
-    parser.add_argument('--tmp-basedir', type=str, default="temporary_file/", help='Instead of creating temp file in /tmp/. Use this option for non-sudo situation')
+    parser.add_argument('--tmp_basedir', type=str, default="temporary_file/", help='Instead of creating temp file in /tmp/. Use this option for non-sudo situation')
     # TODO Add option to specify tmp dir
     args = parser.parse_args()
 
@@ -156,7 +156,7 @@ def main():
         print('Identifying shortest language...', file=sys.stderr)
         ratios = [None, None]
         for i in range(2):
-            with tempfile.TemporaryDirectory() as tmp:
+            with tempfile.TemporaryDirectory(dir=args.tmp_basedir) as tmp:
                 bash('cat ' + quote(args.dev[i]) +
                      ' | ' + translate_command(args, args.input[i], cube_pruning_pop_limit=args.cube_pruning_pop_limit) +
                      ' > ' + quote(tmp + '/output.txt'))
@@ -179,7 +179,7 @@ def main():
             pmin = pmax = None
             pinitial = bwdpenalty
             delta = PENALTY_DELTA
-            with tempfile.TemporaryDirectory() as tmp:
+            with tempfile.TemporaryDirectory(dir=args.tmp_basedir) as tmp:
                 bash('cat ' + quote(args.dev[fwdind]) +
                      ' | ' + translate_command(args, args.input[fwdind], word_penalty=fwdpenalty,
                                                cube_pruning_pop_limit=args.cube_pruning_pop_limit) +
@@ -248,7 +248,7 @@ def main():
             src2trg_config = args.output[ind] + '.it' + str(it)
             trg2src_config = args.output[rind] + '.it' + str(it + (0 if is_first else 1))
 
-            with tempfile.TemporaryDirectory() as tmp:
+            with tempfile.TemporaryDirectory(dir=args.tmp_basedir) as tmp:
                 open(tmp + '/cache.txt', mode='x').close()
 
                 # Build reference
