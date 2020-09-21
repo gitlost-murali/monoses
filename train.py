@@ -116,8 +116,8 @@ def tune(args, input_src2trg, input_trg2src, output_src2trg, output_trg2src):
          ' --iterations {}'.format(args.tuning_iter) +
          (' --length-init' if args.length_init else '') +
          ('' if args.supervised_tuning is None else ' --supervised'))
-    os.remove(args.tmp + '/dev.true.src')
-    os.remove(args.tmp + '/dev.true.trg')
+    # os.remove(args.tmp + '/dev.true.src')
+    # os.remove(args.tmp + '/dev.true.trg')
 
 
 def tokenize_command(args, lang):
@@ -129,7 +129,7 @@ def tokenize_command(args, lang):
 # Step 1: Corpus preprocessing
 def preprocess(args):
     root = args.working + '/step1'
-    os.mkdir(root)
+    os.makedirs(root, exist_ok=True)
     for part, corpus, lang in (('src', args.src, args.src_lang), ('trg', args.trg, args.trg_lang)):
         # Tokenize, deduplicate, clean by length, and shuffle
         bash('export LC_ALL=C;' +
@@ -164,14 +164,14 @@ def preprocess(args):
              ' > ' + quote(root + '/train.true.' + part))
 
     # Remove temporary files
-    os.remove(args.tmp + '/full.tok')
-    os.remove(args.tmp + '/full.true')
+    # os.remove(args.tmp + '/full.tok')
+    # os.remove(args.tmp + '/full.true')
 
 
 # Step 2: Language model training
 def train_lm(args):
     root = args.working + '/step2'
-    os.mkdir(root)
+    os.makedirs(root, exist_ok=True)
     for part in ('src', 'trg'):
         bash(quote(MOSES + '/bin/lmplz') +
              ' -T ' + quote(args.tmp + '/lm') +
@@ -182,13 +182,13 @@ def train_lm(args):
         bash(quote(MOSES + '/bin/build_binary') +
              ' ' + quote(args.tmp + '/model.arpa') +
              ' ' + quote(root + '/' + part + '.blm'))
-        os.remove(args.tmp + '/model.arpa')
+        # os.remove(args.tmp + '/model.arpa')
 
 
 # Step 3: Train embeddings
 def train_embeddings(args):
     root = args.working + '/step3'
-    os.mkdir(root)
+    os.makedirs(root, exist_ok=True)
     for part in ('src', 'trg'):
         corpus = args.working + '/step1/train.true.' + part
 
@@ -229,15 +229,15 @@ def train_embeddings(args):
             ' -output ' + quote(root + '/emb.' + part))
 
         # Clean temporary files
-        for f in os.listdir(args.tmp):
-            os.remove(os.path.join(args.tmp, f))
+        # for f in os.listdir(args.tmp):
+        #     os.remove(os.path.join(args.tmp, f))
 
 
 # Step 4: Map embeddings
 # TODO Add CUDA support
 def map_embeddings(args):
     root = args.working + '/step4'
-    os.mkdir(root)
+    os.makedirs(root, exist_ok=True)
     bash('export OMP_NUM_THREADS=' + str(args.threads) + ';'
          ' python3 ' + quote(VECMAP + '/map_embeddings.py') +
          ' --' + args.vecmap_mode + ' -v' +
@@ -252,7 +252,7 @@ def map_embeddings(args):
 # TODO Add additional options
 def induce_phrase_table(args):
     root = args.working + '/step5'
-    os.mkdir(root)
+    os.makedirs(root, exist_ok=True)
     bash('export OMP_NUM_THREADS=' + str(args.threads) + ';'
          ' python3 ' + quote(TRAINING + '/induce-phrase-table.py') +
          ' --src ' + quote(args.working + '/step4/emb.src') +
@@ -266,13 +266,13 @@ def induce_phrase_table(args):
              ' ' + quote(args.tmp + '/' + part + '.phrase-table') +
              ('' if args.no_levenshtein else (' |  python3 ' + quote(TRAINING + '/add-levenshtein.py'))) +
              ' | gzip > ' + quote(root + '/' + part + '.phrase-table.gz'))
-        os.remove(args.tmp + '/' + part + '.phrase-table')
+        # os.remove(args.tmp + '/' + part + '.phrase-table')
 
 
 # Step 6: Build initial model
 def build_initial_model(args):
     root = args.working + '/step6'
-    os.mkdir(root)
+    os.makedirs(root, exist_ok=True)
     for src, trg in ('src', 'trg'), ('trg', 'src'):
         part = src + '2' + trg
         binarize(root + '/' + part + '.moses.ini',
@@ -286,7 +286,7 @@ def build_initial_model(args):
 # Step 7: Tuning
 def tuning(args):
     root = args.working + '/step7'
-    os.mkdir(root)
+    os.makedirs(root, exist_ok=True)
     tune(args, args.working + '/step6/src2trg.moses.ini', args.working + '/step6/trg2src.moses.ini',
          root + '/src2trg.moses.ini', root + '/trg2src.moses.ini')
 
@@ -294,7 +294,7 @@ def tuning(args):
 # Step 8: Iterative backtranslation
 def iterative_backtranslation(args):
     root = args.working + '/step8'
-    os.mkdir(root)
+    os.makedirs(root, exist_ok=True)
     config = {('src', 'trg'): args.working + '/step7/src2trg.moses.ini',
               ('trg', 'src'): args.working + '/step7/trg2src.moses.ini'}
     for part in 'src', 'trg':
@@ -322,8 +322,8 @@ def iterative_backtranslation(args):
 
             output_dir = root + '/' + src + '2' + trg + '-it' + str(it)
             tmp = args.tmp + '/train-supervised'
-            os.mkdir(output_dir)
-            os.mkdir(tmp)
+            os.makedirs(output_dir, exist_ok=True)
+            os.makedirs(tmp, exist_ok=True)
 
             # Corpus cleaning
             bash(quote(MOSES + '/scripts/training/clean-corpus-n.perl') +
@@ -343,7 +343,7 @@ def iterative_backtranslation(args):
             bash(quote(FAST_ALIGN + '/fast_align') +
                  ' -i ' + quote(tmp + '/clean.txt') + ' -d -o -v -r' +
                  ' > ' + quote(tmp + '/reverse.align'))
-            os.remove(tmp + '/clean.txt')
+            # os.remove(tmp + '/clean.txt')
 
             # Symmetrization
             bash(quote(FAST_ALIGN + '/atools') +
@@ -351,8 +351,8 @@ def iterative_backtranslation(args):
                  ' -j ' + quote(tmp + '/reverse.align') +
                  ' -c grow-diag-final-and' +
                  ' > ' + quote(tmp + '/aligned.grow-diag-final-and'))
-            os.remove(tmp + '/forward.align')
-            os.remove(tmp + '/reverse.align')
+            # os.remove(tmp + '/forward.align')
+            # os.remove(tmp + '/reverse.align')
 
             # Build model
             bash(quote(MOSES + '/scripts/training/train-model.perl') +
@@ -442,7 +442,7 @@ def iterative_backtranslation(args):
 # Step 9: Synthetic parallel corpus generation
 def generate_bitext(args):
     root = args.working + '/step9'
-    os.mkdir(root)
+    os.makedirs(root, exist_ok=True)
 
     # Concatenate and shuffle both corpora oversampling the smallest one, and learn BPE on it
     src_lines = count_lines(args.working + '/step1/train.true.src')
@@ -462,7 +462,7 @@ def generate_bitext(args):
     bash('python3 ' + quote(SUBWORD_NMT + '/subword_nmt/learn_bpe.py') + ' -s ' + str(args.bpe_tokens) +
          ' < ' + quote(args.tmp + '/all.txt') +
          ' > ' + quote(root + '/bpe.codes'))
-    os.remove(args.tmp + '/all.txt')
+    # os.remove(args.tmp + '/all.txt')
 
     # Backtranslate and apply BPE
     for src, trg in ('src', 'trg'), ('trg', 'src'):
@@ -489,7 +489,7 @@ def generate_bitext(args):
 # Step 10: NMT training
 def train_nmt(args):
     root = args.working + '/step10'
-    os.mkdir(root)
+    os.makedirs(root, exist_ok=True)
 
     src_reader = open(args.working + '/step9/train.trg2src.src', encoding='utf-8', errors='surrogateescape')
     trg_reader = open(args.working + '/step9/train.src2trg.trg', encoding='utf-8', errors='surrogateescape')
@@ -565,8 +565,8 @@ def train_nmt(args):
                 for gpu in args.nmt_gpus:
                     bash('cat ' + quote(args.tmp + '/bt.' + str(gpu)) + ' >> ' + quote(args.tmp + '/train.' + src))
                     bash('cat ' + quote(args.tmp + '/mono.' + str(gpu)) + ' >> ' + quote(args.tmp + '/train.' + trg))
-                    os.remove(args.tmp + '/bt.' + str(gpu))
-                    os.remove(args.tmp + '/mono.' + str(gpu))
+                    # os.remove(args.tmp + '/bt.' + str(gpu))
+                    # os.remove(args.tmp + '/mono.' + str(gpu))
 
             # Binarize training data
             bash('python3 ' + quote(FAIRSEQ + '/preprocess.py') +
@@ -578,8 +578,8 @@ def train_nmt(args):
                 ' --srcdict ' + quote(args.working + '/step9/vocab.txt') +
                 ' --tgtdict ' + quote(args.working + '/step9/vocab.txt') +
                 ' --workers ' + str(args.threads))
-            os.remove(args.tmp + '/train.src')
-            os.remove(args.tmp + '/train.trg')
+            # os.remove(args.tmp + '/train.src')
+            # os.remove(args.tmp + '/train.trg')
 
             # Train NMT
             bash('CUDA_VISIBLE_DEVICES=' + ','.join([str(gpu) for gpu in args.nmt_gpus]) +
@@ -611,17 +611,17 @@ def train_nmt(args):
     shutil.copy(args.tmp + '/trg2src/checkpoint_last.pt', root + '/trg2src.pt')
 
     # Save dictionaries
-    os.mkdir(root + '/data.bin')
+    os.makedirs(root + '/data.bin', exist_ok=True)
     shutil.copy(args.tmp + '/src2trg.data.bin/dict.src.txt', root + '/data.bin/dict.src.txt')
     shutil.copy(args.tmp + '/src2trg.data.bin/dict.trg.txt', root + '/data.bin/dict.trg.txt')
 
     # Cleaning
-    os.remove(args.tmp + '/dummy.src')
-    os.remove(args.tmp + '/dummy.trg')
-    shutil.rmtree(args.tmp + '/src2trg')
-    shutil.rmtree(args.tmp + '/trg2src')
-    shutil.rmtree(args.tmp + '/src2trg.data.bin')
-    shutil.rmtree(args.tmp + '/trg2src.data.bin')
+    # os.remove(args.tmp + '/dummy.src')
+    # os.remove(args.tmp + '/dummy.trg')
+    # shutil.rmtree(args.tmp + '/src2trg')
+    # shutil.rmtree(args.tmp + '/trg2src')
+    # shutil.rmtree(args.tmp + '/src2trg.data.bin')
+    # shutil.rmtree(args.tmp + '/trg2src.data.bin')
 
 
 def main():
