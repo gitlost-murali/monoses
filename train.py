@@ -115,7 +115,7 @@ def tune(args, input_src2trg, input_trg2src, output_src2trg, output_trg2src):
          ' --cube-pruning-pop-limit ' + str(args.cube_pruning_pop_limit) +
          ' --iterations {}'.format(args.tuning_iter) +
          (' --length-init' if args.length_init else '') +
-        (' --tmp-basedir' + str(args.temp) ) +
+        (' --tmp-basedir' + str(args.tmp) ) +
          ('' if args.supervised_tuning is None else ' --supervised'))
     # os.remove(args.tmp + '/dev.true.src')
     # os.remove(args.tmp + '/dev.true.trg')
